@@ -1,0 +1,190 @@
+cat > "$HOME/Desktop/iphone_service_toolkit.sh" <<'TOOLKIT'
+#!/bin/bash
+
+# ==========================================
+# APPLE DEVICE SERVICE TOOLKIT
+# Device: iPhone 12 Pro Max (user-reported)
+# Mac: macOS Big Sur compatible checks
+# Purpose: USB diagnostics and recovery guidance
+# ==========================================
+
+set -u
+
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RESET='\033[0m'
+
+line() {
+  printf '%s\n' "=========================================="
+}
+
+pause() {
+  printf "\nPress Return to continue..."
+  read -r _
+}
+
+show_menu() {
+  clear
+  line
+  printf " APPLE DEVICE SERVICE TOOLKIT\n"
+  printf " Previous-owner Activation Lock case\n"
+  line
+  printf "1) Check Mac and developer tools\n"
+  printf "2) Inspect connected USB devices\n"
+  printf "3) Check optional iPhone utilities\n"
+  printf "4) Show recovery-mode instructions\n"
+  printf "5) Show Apple ID / Activation Lock resolution\n"
+  printf "6) Save diagnostic report to Desktop\n"
+  printf "0) Exit\n"
+  line
+  printf "Select an option: "
+}
+
+check_mac() {
+  line
+  echo "MAC OS VERSION"
+  sw_vers
+  echo
+  echo "ACTIVE DEVELOPER DIRECTORY"
+  xcode-select -p 2>&1
+  echo
+  echo "XCODE VERSION (if installed)"
+  xcodebuild -version 2>&1 || true
+  echo
+  echo "DEVICE TOOL AVAILABILITY"
+  xcrun --find devicectl 2>&1 || true
+  echo
+  echo "OPTIONAL LIBIMOBILEDEVICE UTILITIES"
+  command -v idevice_id || echo "idevice_id not installed"
+  command -v ideviceinfo || echo "ideviceinfo not installed"
+}
+
+check_usb() {
+  line
+  echo "USB DEVICE REPORT"
+  echo "Keep the iPhone connected with a data-capable cable."
+  echo "This may take a little while..."
+  system_profiler SPUSBDataType
+  echo
+  echo "MATCHING USB REGISTRY ENTRIES"
+  ioreg -p IOUSB -l -w 0 |
+    grep -i -B 5 -A 12 -E 'iPhone|Apple Mobile|Recovery|DFU' ||
+    echo "No matching USB labels found."
+  echo
+  echo "Note: absence of a label is not conclusive."
+}
+
+check_utilities() {
+  line
+  echo "OPTIONAL DEVICE UTILITIES"
+  if command -v idevice_id >/dev/null 2>&1; then
+    echo "Detected idevice_id. Listing visible device identifiers:"
+    idevice_id -l
+  else
+    echo "idevice_id is not installed."
+  fi
+
+  if command -v ideviceinfo >/dev/null 2>&1; then
+    echo "ideviceinfo is installed."
+    echo "It may require a trusted/paird device."
+  else
+    echo "ideviceinfo is not installed."
+  fi
+
+  echo
+  echo "Apple's devicectl is not available in every Big Sur setup."
+  echo "A missing command does not mean the phone is defective."
+}
+
+recovery_help() {
+  line
+  echo "IPHONE 12 PRO MAX RECOVERY MODE"
+  echo "1. Disconnect the iPhone from the cable."
+  echo "2. Quickly press and release Volume Up."
+  echo "3. Quickly press and release Volume Down."
+  echo "4. Hold the Side button until recovery mode appears."
+  echo "5. Connect the phone to the Mac and open Finder."
+  echo "6. Select the iPhone if it appears."
+  echo "7. Try Update when appropriate."
+  echo "8. Restore erases local data and reinstalls iOS."
+  echo
+  echo "IMPORTANT:"
+  echo "A restore does not remove server-side Activation Lock."
+}
+
+activation_help() {
+  line
+  echo "PREVIOUS-OWNER ACTIVATION LOCK"
+  echo
+  echo "If the device is locked to a previous owner:"
+  echo "1. Ask the previous owner to remove the device"
+  echo "   from their Apple Account."
+  echo "2. If you purchased the phone, contact Apple Support"
+  echo "   with valid proof of purchase and ask about an"
+  echo "   Activation Lock support request."
+  echo "3. If you are the original account holder, use"
+  echo "   Apple's account recovery process."
+  echo
+  echo "Official resources:"
+  echo "Activation Lock: https://support.apple.com/108934"
+  echo "Account recovery: https://iforgot.apple.com/"
+  echo "Apple Support: https://support.apple.com/"
+  echo
+  echo "USB detection, jailbreaks, and firmware restores"
+  echo "do not themselves authorize Activation Lock removal."
+}
+
+save_report() {
+  REPORT="$HOME/Desktop/iphone_diagnostic_report.txt"
+  {
+    echo "APPLE DEVICE DIAGNOSTIC REPORT"
+    date
+    echo
+    echo "--- macOS ---"
+    sw_vers
+    echo
+    echo "--- Developer directory ---"
+    xcode-select -p 2>&1
+    echo
+    echo "--- USB report ---"
+    system_profiler SPUSBDataType
+    echo
+    echo "--- USB registry matches ---"
+    ioreg -p IOUSB -l -w 0 |
+      grep -i -B 5 -A 12 -E 'iPhone|Apple Mobile|Recovery|DFU' ||
+      true
+    echo
+    echo "--- Optional utility availability ---"
+    command -v idevice_id || true
+    command -v ideviceinfo || true
+    xcrun --find devicectl 2>&1 || true
+    echo
+    echo "Activation Lock status cannot be determined by this report."
+  } > "$REPORT"
+
+  echo "Report saved to: $REPORT"
+  echo "Review it and redact device identifiers before sharing."
+}
+
+while true; do
+  show_menu
+  read -r choice
+
+  case "$choice" in
+    1) check_mac; pause ;;
+    2) check_usb; pause ;;
+    3) check_utilities; pause ;;
+    4) recovery_help; pause ;;
+    5) activation_help; pause ;;
+    6) save_report; pause ;;
+    0) echo "Exiting toolkit."; exit 0 ;;
+    *) echo "Invalid option."; pause ;;
+  esac
+done
+TOOLKIT
+
+chmod +x "$HOME/Desktop/iphone_service_toolkit.sh"
+echo "Toolkit created on your Desktop."
+echo "Run it with:"
+echo 'bash "$HOME/Desktop/iphone_service_toolkit.sh"'
